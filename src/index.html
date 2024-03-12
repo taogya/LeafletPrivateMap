@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Leaflet Private Map</title>
+  <!-- Leaflet CSSの読み込み -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+</head>
+
+<body>
+  <!-- 地図を表示するための要素 -->
+  <div id="map"></div>
+
+  <!-- Leaflet JSの読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    // 表示する画像の読み込み
+    var svgImage = new Image();
+    svgImage.src = 'PrivateMap.svg';
+    svgImage.onload = function () {
+      // 画像の読み込みが完了したら地図のサイズと画像のサイズを合わせる
+      document.getElementById('map').style.width = svgImage.width + 'px';
+      document.getElementById('map').style.height = svgImage.height + 'px';
+      // 地図の初期化            
+      var map = L.map('map', {
+        crs: L.CRS.Simple, // 座標系の指定
+        minZoom: 0, // 最小ズームレベル
+      }).setView([0, 0], 0);
+      // ズームレベルが0のときは画像の中心に移動する
+      map.on('zoomend', function (e) {
+        if (map.getZoom() === 0) {
+          map.setView([svgImage.height / 2, svgImage.width / 2],
+            0,
+            { animate: false });
+        }
+      });
+      // 画像を地図に追加
+      var imageBounds = L.latLngBounds(
+        [0, 0],
+        [svgImage.height, svgImage.width],
+      );
+      L.imageOverlay('PrivateMap.svg', imageBounds).addTo(map);
+      map.fitBounds(imageBounds);
+      map.on('click', function (e) {
+        // マーカーの追加
+        var marker = L.marker(e.latlng).addTo(map);
+        marker.bindPopup('座標: ' + e.latlng.toString());
+        // マーカーにマウスオーバーしたときにポップアップを表示
+        marker.on('mouseover', function (e) {
+          var marker = e.target;
+          marker.openPopup();
+        });
+        // マーカーからマウスが離れたときにポップアップを非表示
+        marker.on('mouseout', function (e) {
+          var marker = e.target;
+          marker.closePopup();
+        });
+      });
+    };
+  </script>
+</body>
+
+</html>
