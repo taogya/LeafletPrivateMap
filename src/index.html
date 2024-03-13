@@ -5,6 +5,10 @@
   <title>Leaflet Private Map</title>
   <!-- Leaflet CSSの読み込み -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+  <!-- MarkerCluster CSSの読み込み -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
 </head>
 
 <body>
@@ -13,11 +17,20 @@
 
   <!-- Leaflet JSの読み込み -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+  <!-- LeafletHeat JSの読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.heat/dist/leaflet-heat.js"></script>
+  <!-- MarkerCluster JSの読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+
+
   <script>
+    // ヒートマップのデータ
+    var heatData = {};
+    var heatLayer = null;
     // 表示する画像の読み込み
     var svgImage = new Image();
     svgImage.src = 'PrivateMap.svg';
-    svgImage.onload = function () {
+    svgImage.addEventListener("load", () => {
       // 画像の読み込みが完了したら地図のサイズと画像のサイズを合わせる
       document.getElementById('map').style.width = svgImage.width + 'px';
       document.getElementById('map').style.height = svgImage.height + 'px';
@@ -25,6 +38,7 @@
       var map = L.map('map', {
         crs: L.CRS.Simple, // 座標系の指定
         minZoom: 0, // 最小ズームレベル
+        maxZoom: 5, // 最大ズームレベル
       }).setView([0, 0], 0);
       // ズームレベルが0のときは画像の中心に移動する
       map.on('zoomend', function (e) {
@@ -41,9 +55,22 @@
       );
       L.imageOverlay('PrivateMap.svg', imageBounds).addTo(map);
       map.fitBounds(imageBounds);
+      // マーカーグループを追加
+      var markers = L.markerClusterGroup({
+        chunkedLoading: true,
+        removeOutsideVisibleBounds: false,
+        maxClusterRadius: function (zoom) {
+          if (zoom == 0) {
+            return 80
+          } else {
+            return 1
+          }
+        }
+      }).addTo(map);
       map.on('click', function (e) {
         // マーカーの追加
         var marker = L.marker(e.latlng).addTo(map);
+        markers.addLayer(marker);
         marker.bindPopup('座標: ' + e.latlng.toString());
         // マーカーにマウスオーバーしたときにポップアップを表示
         marker.on('mouseover', function (e) {
@@ -55,8 +82,33 @@
           var marker = e.target;
           marker.closePopup();
         });
+        // ヒートマップレイヤーに表示するでーあの作成
+        if (heatData[e.latlng.lat]) {
+          if (heatData[e.latlng.lat][e.latlng.lng]) {
+            heatData[e.latlng.lat][e.latlng.lng]++;
+          }
+          else {
+            heatData[e.latlng.lat][e.latlng.lng] = 1;
+          }
+        }
+        else {
+          heatData[e.latlng.lat] = {};
+          heatData[e.latlng.lat][e.latlng.lng] = 1;
+        }
+        // ヒートマップレイヤーの描画
+        if (heatLayer) {
+          map.removeLayer(heatLayer);
+        }
+        var mapAddress = [];
+        Object.keys(heatData).forEach(lat => {
+          Object.keys(heatData[lat]).forEach(lng => {
+            mapAddress.push([lat, lng, heatData[lat][lng]]);
+          });
+        });
+        heatLayer = L.heatLayer(mapAddress, { radius: 25, blur: 5, minOpacity: 0.2 }).addTo(map);
+
       });
-    };
+    });
   </script>
 </body>
 
